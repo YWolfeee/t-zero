@@ -93,6 +93,12 @@ def parse_args():
         help="Where to store the results CSV and (TODO) optionally the final model."
     )
     parser.add_argument(
+        "--cache_dir",
+        type = str,
+        default = "models/",
+        help = "Where to save the models being downloaded",
+    )
+    parser.add_argument(
         "-m",
         "--model_name_or_path",
         type=str,
@@ -391,19 +397,29 @@ def main():
     #
     # In distributed training, the .from_pretrained methods guarantee that only one local process can concurrently
     # download model & vocab.
+
+    if not os.path.exists(args.cache_dir):
+        os.mkdir(args.cache_dir)
+
     if args.config_name:
-        config = AutoConfig.from_pretrained(args.config_name)
+        config = AutoConfig.from_pretrained(args.config_name,
+                                            cache_dir = args.cache_dir)
     elif args.model_name_or_path:
-        config = AutoConfig.from_pretrained(args.model_name_or_path)
+        config = AutoConfig.from_pretrained(args.model_name_or_path,
+                                            cache_dir = args.cache_dir)
     else:
         raise ValueError(
             "Either `args.config_name` or `args.model_name_or_path` should be provided."
         )
 
     if args.tokenizer_name:
-        tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name, use_fast=not args.use_slow_tokenizer)
+        tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name, 
+                                use_fast=not args.use_slow_tokenizer,
+                                cache_dir = args.cache_dir)
     elif args.model_name_or_path:
-        tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, use_fast=not args.use_slow_tokenizer)
+        tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, 
+                                use_fast=not args.use_slow_tokenizer,
+                                cache_dir = args.cache_dir)
     else:
         raise ValueError(
             "You are instantiating a new tokenizer from scratch. This is not supported by this script."
@@ -415,10 +431,10 @@ def main():
             args.model_name_or_path,
             from_tf=bool(".ckpt" in args.model_name_or_path),
             config=config,
-        )
+            cache_dir = args.cache_dir)
     else:
         logger.info("Training new model from scratch")
-        model = AutoModelForSeq2SeqLM.from_config(config)
+        model = AutoModelForSeq2SeqLM.from_config(config, cache_dir = args.cache_dir)
 
     # Preprocessing the datasets.
     # First we tokenize all the texts.
